@@ -85,6 +85,12 @@ function App() {
     () => showAllTrades ? trades : trades.filter((trade) => trade.symbol.toUpperCase() === symbol.toUpperCase()),
     [showAllTrades, trades, symbol],
   );
+  const referencePrice = order.type === "LIMIT"
+    ? Number(order.price)
+    : Number(order.side === "BUY" ? bestAsk?.price : bestBid?.price);
+  const estimatedValue = Number(order.quantity) > 0 && Number.isFinite(referencePrice) && referencePrice > 0
+    ? Number(order.quantity) * referencePrice
+    : null;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -169,6 +175,7 @@ function App() {
               <div className="field"><label htmlFor="order-quantity">Quantity</label><input id="order-quantity" name="quantity" type="number" min="1" step="1" placeholder="0" value={order.quantity} onChange={handleChange} required /></div>
               {order.type === "LIMIT" && <div className="field"><label htmlFor="order-price">Limit price <span>USD</span></label><div className="price-input"><span>$</span><input id="order-price" name="price" type="number" min="0.01" step="0.01" placeholder="0.00" value={order.price} onChange={handleChange} required /></div></div>}
               {order.type === "MARKET" && <div className="market-note"><span>◎</span><span>Market orders execute against the best available price.</span></div>}
+              <div className="order-estimate" aria-live="polite"><span>ESTIMATED ORDER VALUE</span><strong>{estimatedValue === null ? "—" : money(estimatedValue)}</strong><small>{order.type === "LIMIT" ? "Quantity × limit price · before fees" : estimatedValue === null ? `No ${order.side === "BUY" ? "ask" : "bid"} available to estimate` : `Based on current best ${order.side === "BUY" ? "ask" : "bid"} · before fees`}</small></div>
               <button className={`submit-button ${order.side === "SELL" ? "submit-sell" : ""}`} type="submit" disabled={submitting || !apiConnected}>{submitting ? "Sending order…" : `${order.side === "BUY" ? "Buy" : "Sell"} ${order.symbol || "shares"}` }<span>→</span></button>
             </form>
           </section>
