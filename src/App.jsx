@@ -9,6 +9,7 @@ function App() {
   const [order, setOrder] = useState(initialOrder);
   const [book, setBook] = useState({ buyOrders: [], sellOrders: [] });
   const [trades, setTrades] = useState([]);
+  const [showAllTrades, setShowAllTrades] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
   const [streamConnected, setStreamConnected] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +81,10 @@ function App() {
     ...book.sellOrders.map((item) => ({ ...item, side: "SELL" })),
     ...book.buyOrders.map((item) => ({ ...item, side: "BUY" })),
   ], [book]);
+  const visibleTrades = useMemo(
+    () => showAllTrades ? trades : trades.filter((trade) => trade.symbol.toUpperCase() === symbol.toUpperCase()),
+    [showAllTrades, trades, symbol],
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -159,7 +164,7 @@ function App() {
             <div className="panel-heading"><div><div className="eyebrow">EXECUTION</div><h2>Place an order</h2></div><span className="panel-icon">↗</span></div>
             <form className="order-form" onSubmit={placeOrder}>
               <div className="field"><label htmlFor="order-symbol">Instrument</label><input id="order-symbol" name="symbol" value={order.symbol} onChange={handleChange} maxLength={20} required autoComplete="off" /></div>
-              <div className="field"><label>Direction</label><div className="segmented"><button type="button" className={order.side === "BUY" ? "selected buy-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "BUY" }))}>Buy</button><button type="button" className={order.side === "SELL" ? "selected sell-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "SELL" }))}>Sell</button></div></div>
+              <div className="field"><label>Direction</label><div className="segmented"><button type="button" aria-pressed={order.side === "BUY"} className={order.side === "BUY" ? "selected buy-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "BUY" }))}>Buy</button><button type="button" aria-pressed={order.side === "SELL"} className={order.side === "SELL" ? "selected sell-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "SELL" }))}>Sell</button></div></div>
               <div className="field"><label htmlFor="order-type">Order type</label><select id="order-type" name="type" value={order.type} onChange={handleChange}><option value="LIMIT">Limit</option><option value="MARKET">Market</option></select></div>
               <div className="field"><label htmlFor="order-quantity">Quantity</label><input id="order-quantity" name="quantity" type="number" min="1" step="1" placeholder="0" value={order.quantity} onChange={handleChange} required /></div>
               {order.type === "LIMIT" && <div className="field"><label htmlFor="order-price">Limit price <span>USD</span></label><div className="price-input"><span>$</span><input id="order-price" name="price" type="number" min="0.01" step="0.01" placeholder="0.00" value={order.price} onChange={handleChange} required /></div></div>}
@@ -179,8 +184,8 @@ function App() {
         </div>
 
         <section className="panel activity-panel">
-          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions</h2></div><span className="live-pill"><i /> LIVE FEED</span></div>
-          {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : <div className="table-wrap"><table><thead><tr><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.key}><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
+          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions <span className="trade-count">{visibleTrades.length}</span></h2></div><div className="activity-controls"><button className="tape-filter" type="button" aria-pressed={!showAllTrades} onClick={() => setShowAllTrades((value) => !value)}>{showAllTrades ? "ALL SYMBOLS" : `${symbol} ONLY`}</button><span className="live-pill"><i /> LIVE FEED</span></div></div>
+          {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : visibleTrades.length === 0 ? <EmptyState title={`No ${symbol} executions`} detail="Switch to all symbols to see the latest market activity." /> : <div className="table-wrap"><table><thead><tr><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{visibleTrades.map((trade) => <tr key={trade.key}><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
         </section>
         <footer><span>ORDERFLOW <b>·</b> MATCHING ENGINE</span><span>Market data is for demonstration purposes</span></footer>
       </main>
