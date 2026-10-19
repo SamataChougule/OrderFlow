@@ -1,553 +1,206 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
+const initialOrder = { symbol: "AAPL", side: "BUY", type: "LIMIT", price: "", quantity: "" };
+const money = (value) => Number(value || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+
 function App() {
-  const [orders, setOrders] = useState([]);
+  const [symbol, setSymbol] = useState("AAPL");
+  const [order, setOrder] = useState(initialOrder);
+  const [book, setBook] = useState({ buyOrders: [], sellOrders: [] });
   const [trades, setTrades] = useState([]);
-  const [backendConnected, setBackendConnected] = useState(false);
+  const [apiConnected, setApiConnected] = useState(false);
+  const [streamConnected, setStreamConnected] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+  const requestId = useRef(0);
 
-  const [order, setOrder] = useState({
-    orderId: "",
-    symbol: "AAPL",
-    side: "BUY",
-    type: "LIMIT",
-    price: "",
-    quantity: ""
-  });
-
-  // =========================
-  // LOAD ORDER BOOK
-  // =========================
-  const loadOrderBook = async () => {
-    try {
-      const response = await fetch("/api/orderbook");
-
-      if (!response.ok) {
-        throw new Error("Order book request failed");
-      }
-
-      const data = await response.json();
-
-      const allOrders = [
-        ...(data.buyOrders || []),
-        ...(data.sellOrders || [])
-      ];
-
-      setOrders(allOrders);
-      setBackendConnected(true);
-
-    } catch (error) {
-      console.error("Order book error:", error);
-      setBackendConnected(false);
-    }
-  };
-
-  // =========================
-  // WEBSOCKET
-  // =========================
-  useEffect(() => {
-    loadOrderBook();
-
-    const socket = new WebSocket(
-      "ws://localhost:5173/ws/market-data"
-    );
-
-    socket.onopen = () => {
-      console.log("Connected to OrderFlow WebSocket");
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const trade = JSON.parse(event.data);
-
-        if (trade.symbol) {
-          setTrades((previousTrades) => [
-            trade,
-            ...previousTrades
-          ]);
-        }
-
-      } catch (error) {
-        console.log("WebSocket message:", event.data);
-      }
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    return () => {
-      socket.close();
-    };
+  const notify = useCallback((message, kind = "success") => {
+    setToast({ message, kind });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3600);
   }, []);
 
-  // =========================
-  // HANDLE INPUT
-  // =========================
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  const loadOrderBook = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    try {
+      const response = await fetch(`/api/orderbook?symbol=${encodeURIComponent(symbol)}`);
+      if (!response.ok) throw new Error(`Order book request failed (${response.status})`);
+      const data = await response.json();
+      if (currentRequest !== requestId.current) return;
+      setBook({ buyOrders: data.buyOrders || [], sellOrders: data.sellOrders || [] });
+      setApiConnected(true);
+    } catch {
+      if (currentRequest === requestId.current) setApiConnected(false);
+    }
+  }, [symbol]);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(loadOrderBook, 0);
+    const interval = window.setInterval(loadOrderBook, 2500);
+    return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); };
+  }, [loadOrderBook]);
+
+  useEffect(() => {
+    let socket;
+    let retryTimer;
+    let disposed = false;
+    const connect = () => {
+      if (disposed) return;
+      const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
+      socket = new WebSocket(`${scheme}//${window.location.host}/ws/market-data`);
+      socket.onopen = () => setStreamConnected(true);
+      socket.onmessage = ({ data }) => {
+        try {
+          const trade = JSON.parse(data);
+          if (trade.symbol && Number.isFinite(Number(trade.price))) {
+            setTrades((current) => [{ ...trade, key: `${Date.now()}-${Math.random()}` }, ...current].slice(0, 30));
+          }
+        } catch { /* The server's initial connection notice is informational. */ }
+      };
+      socket.onclose = () => {
+        setStreamConnected(false);
+        if (!disposed) retryTimer = window.setTimeout(connect, 2200);
+      };
+      socket.onerror = () => socket.close();
+    };
+    connect();
+    return () => { disposed = true; window.clearTimeout(retryTimer); socket?.close(); };
+  }, []);
+
+  const bestBid = book.buyOrders[0];
+  const bestAsk = book.sellOrders[0];
+  const spread = bestBid && bestAsk ? Number(bestAsk.price) - Number(bestBid.price) : null;
+  const activeCount = book.buyOrders.length + book.sellOrders.length;
+  const orderRows = useMemo(() => [
+    ...book.sellOrders.map((item) => ({ ...item, side: "SELL" })),
+    ...book.buyOrders.map((item) => ({ ...item, side: "BUY" })),
+  ], [book]);
+
   const handleChange = (event) => {
-    setOrder({
-      ...order,
-      [event.target.name]: event.target.value
-    });
+    const { name, value } = event.target;
+    setOrder((current) => ({ ...current, [name]: name === "symbol" ? value.toUpperCase() : value }));
+    if (name === "symbol") setSymbol(value.toUpperCase());
   };
 
-  // =========================
-  // PLACE ORDER
-  // =========================
   const placeOrder = async (event) => {
     event.preventDefault();
-
-    const orderData = {
-      orderId: Number(order.orderId),
-      symbol: order.symbol,
-      side: order.side,
-      type: order.type,
-      price: Number(order.price),
-      quantity: Number(order.quantity)
-    };
-
-    try {
-      const response = await fetch(
-        "/api/orders",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(orderData)
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Server returned ${response.status}`
-        );
-      }
-
-      const result = await response.text();
-
-      alert(result);
-
-      setOrder({
-        orderId: "",
-        symbol: order.symbol,
-        side: order.side,
-        type: order.type,
-        price: "",
-        quantity: ""
-      });
-
-      // Give Disruptor time to process the order
-      setTimeout(() => {
-        loadOrderBook();
-      }, 500);
-
-    } catch (error) {
-      console.error("Order error:", error);
-
-      alert(
-        "ERROR: " + error.message
-      );
+    const quantity = Number(order.quantity);
+    const price = Number(order.price);
+    if (!order.symbol.trim() || !Number.isInteger(quantity) || quantity <= 0 || (order.type === "LIMIT" && (!Number.isFinite(price) || price <= 0))) {
+      notify("Enter a symbol, a whole share quantity, and a valid limit price.", "error");
+      return;
     }
+    setSubmitting(true);
+    const orderData = {
+      orderId: Date.now(), symbol: order.symbol.trim(), side: order.side, type: order.type,
+      price: order.type === "LIMIT" ? price : 0, quantity,
+    };
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderData),
+      });
+      if (!response.ok) {
+        let message = `Could not place order (${response.status})`;
+        try { message = (await response.json()).error || message; } catch { /* Keep fallback. */ }
+        throw new Error(message);
+      }
+      notify(`${order.side} ${order.quantity} ${order.symbol} order accepted`);
+      setOrder((current) => ({ ...initialOrder, symbol: current.symbol, side: current.side, type: current.type }));
+      window.setTimeout(loadOrderBook, 350);
+    } catch (error) {
+      notify(error.message || "Order could not be sent. Check the backend connection.", "error");
+    } finally { setSubmitting(false); }
   };
 
-  // =========================
-  // CANCEL ORDER
-  // =========================
   const cancelOrder = async (orderId) => {
+    setCancelling(orderId);
     try {
-      const response = await fetch(
-        `/api/orderbook/${orderId}`,
-        {
-          method: "DELETE"
-        }
-      );
-
+      const response = await fetch(`/api/orderbook/${orderId}`, { method: "DELETE" });
       if (!response.ok) {
-        throw new Error(
-          `Server returned ${response.status}`
-        );
+        throw new Error(response.status === 404 ? "Order was already filled or removed" : `Cancel failed (${response.status})`);
       }
-
-      const result = await response.text();
-
-      alert(result);
-
+      notify(`Order #${orderId} cancelled`);
       loadOrderBook();
-
-    } catch (error) {
-      console.error("Cancel error:", error);
-
-      alert(
-        "ERROR: " + error.message
-      );
-    }
+    } catch (error) { notify(error.message, "error"); }
+    finally { setCancelling(null); }
   };
 
   return (
-    <div className="app">
-
-      {/* ================= HEADER ================= */}
-
-      <header className="header">
-
-        <div>
-          <h1>OrderFlow</h1>
-
-          <p>
-            High-Throughput Matching Engine & Market Data Gateway
-          </p>
+    <div className="app-shell">
+      <header className="topbar">
+        <a className="brand" href="#top" aria-label="OrderFlow home">
+          <span className="brand-mark"><span /><span /><span /></span>
+          <span>order<span className="brand-accent">flow</span><small>MARKET TERMINAL</small></span>
+        </a>
+        <div className="topbar-right">
+          <label className="symbol-picker"><span>MARKET</span><input aria-label="Market symbol" value={symbol} maxLength={20} onChange={handleChange} name="symbol" /></label>
+          <div className="connection"><i className={apiConnected ? "connected" : ""} />API {apiConnected ? "CONNECTED" : "OFFLINE"}</div>
+          <div className="connection"><i className={streamConnected ? "connected" : ""} />STREAM {streamConnected ? "LIVE" : "RECONNECTING"}</div>
         </div>
-
-        <div className="status">
-
-          <span
-            className="status-dot"
-            style={{
-              background: backendConnected
-                ? "#22c55e"
-                : "#ef4444"
-            }}
-          ></span>
-
-          {backendConnected
-            ? "Backend Connected"
-            : "Backend Disconnected"}
-
-        </div>
-
       </header>
 
-      <main>
+      <main id="top" className="workspace">
+        <div className="page-heading"><div><div className="eyebrow">TRADING WORKSPACE <span> / </span> {symbol || "MARKET"}</div><h1>Market overview</h1><p>Live order flow, market depth, and execution activity.</p></div><button className="refresh-button" onClick={loadOrderBook} aria-label="Refresh order book"><span>↻</span> Refresh</button></div>
 
-        {/* ================= PLACE ORDER ================= */}
-
-        <section className="card">
-
-          <h2>Place Order</h2>
-
-          <form onSubmit={placeOrder}>
-
-            {/* ORDER ID */}
-
-            <div className="form-group">
-
-              <label>Order ID</label>
-
-              <input
-                name="orderId"
-                type="number"
-                placeholder="Example: 1001"
-                value={order.orderId}
-                onChange={handleChange}
-                required
-              />
-
-            </div>
-
-            {/* SYMBOL */}
-
-            <div className="form-group">
-
-              <label>Symbol</label>
-
-              <input
-                name="symbol"
-                type="text"
-                placeholder="AAPL"
-                value={order.symbol}
-                onChange={handleChange}
-                required
-              />
-
-            </div>
-
-            {/* SIDE */}
-
-            <div className="form-group">
-
-              <label>Side</label>
-
-              <select
-                name="side"
-                value={order.side}
-                onChange={handleChange}
-              >
-
-                <option value="BUY">
-                  BUY
-                </option>
-
-                <option value="SELL">
-                  SELL
-                </option>
-
-              </select>
-
-            </div>
-
-            {/* TYPE */}
-
-            <div className="form-group">
-
-              <label>Order Type</label>
-
-              <select
-                name="type"
-                value={order.type}
-                onChange={handleChange}
-              >
-
-                <option value="LIMIT">
-                  LIMIT
-                </option>
-
-                <option value="MARKET">
-                  MARKET
-                </option>
-
-              </select>
-
-            </div>
-
-            {/* PRICE */}
-
-            <div className="form-group">
-
-              <label>Price</label>
-
-              <input
-                name="price"
-                type="number"
-                step="0.01"
-                placeholder="100.00"
-                value={order.price}
-                onChange={handleChange}
-                required
-              />
-
-            </div>
-
-            {/* QUANTITY */}
-
-            <div className="form-group">
-
-              <label>Quantity</label>
-
-              <input
-                name="quantity"
-                type="number"
-                placeholder="50"
-                value={order.quantity}
-                onChange={handleChange}
-                required
-              />
-
-            </div>
-
-            {/* BUTTON */}
-
-            <button
-              className="place-button"
-              type="submit"
-            >
-              Place Order
-            </button>
-
-          </form>
-
+        <section className="metric-grid" aria-label="Market summary">
+          <Metric label="BEST BID" value={bestBid ? money(bestBid.price) : "—"} detail={bestBid ? `${bestBid.quantity} shares` : "No buy orders"} tone="green" />
+          <Metric label="BEST ASK" value={bestAsk ? money(bestAsk.price) : "—"} detail={bestAsk ? `${bestAsk.quantity} shares` : "No sell orders"} tone="red" />
+          <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : "Bid / ask difference"} />
+          <Metric label="ACTIVE ORDERS" value={activeCount.toLocaleString()} detail={`${book.buyOrders.length} bids · ${book.sellOrders.length} asks`} />
         </section>
 
+        <div className="main-grid">
+          <section className="panel order-panel">
+            <div className="panel-heading"><div><div className="eyebrow">EXECUTION</div><h2>Place an order</h2></div><span className="panel-icon">↗</span></div>
+            <form className="order-form" onSubmit={placeOrder}>
+              <div className="field"><label htmlFor="order-symbol">Instrument</label><input id="order-symbol" name="symbol" value={order.symbol} onChange={handleChange} maxLength={20} required autoComplete="off" /></div>
+              <div className="field"><label>Direction</label><div className="segmented"><button type="button" className={order.side === "BUY" ? "selected buy-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "BUY" }))}>Buy</button><button type="button" className={order.side === "SELL" ? "selected sell-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "SELL" }))}>Sell</button></div></div>
+              <div className="field"><label htmlFor="order-type">Order type</label><select id="order-type" name="type" value={order.type} onChange={handleChange}><option value="LIMIT">Limit</option><option value="MARKET">Market</option></select></div>
+              <div className="field"><label htmlFor="order-quantity">Quantity</label><input id="order-quantity" name="quantity" type="number" min="1" step="1" placeholder="0" value={order.quantity} onChange={handleChange} required /></div>
+              {order.type === "LIMIT" && <div className="field"><label htmlFor="order-price">Limit price <span>USD</span></label><div className="price-input"><span>$</span><input id="order-price" name="price" type="number" min="0.01" step="0.01" placeholder="0.00" value={order.price} onChange={handleChange} required /></div></div>}
+              {order.type === "MARKET" && <div className="market-note"><span>◎</span><span>Market orders execute against the best available price.</span></div>}
+              <button className={`submit-button ${order.side === "SELL" ? "submit-sell" : ""}`} type="submit" disabled={submitting || !apiConnected}>{submitting ? "Sending order…" : `${order.side === "BUY" ? "Buy" : "Sell"} ${order.symbol || "shares"}` }<span>→</span></button>
+            </form>
+          </section>
 
-        {/* ================= ORDER BOOK ================= */}
+          <section className="panel book-panel">
+            <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
+            {orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Waiting for connection"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : "The order book will appear when the backend is available."} /> : <div className="book-sides">
+              <BookSide title="ASKS · SELL" orders={book.sellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} cancelling={cancelling} />
+              <div className="spread-line"><span>SPREAD</span><strong>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
+              <BookSide title="BIDS · BUY" orders={book.buyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} cancelling={cancelling} />
+            </div>}
+          </section>
+        </div>
 
-        <section className="card">
-
-          <div className="section-header">
-
-            <h2>Order Book</h2>
-
-            <button
-              className="refresh-button"
-              onClick={loadOrderBook}
-            >
-              Refresh
-            </button>
-
-          </div>
-
-          {orders.length === 0 ? (
-
-            <div className="empty">
-              No active orders
-            </div>
-
-          ) : (
-
-            <div className="table-container">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>ID</th>
-                    <th>Symbol</th>
-                    <th>Side</th>
-                    <th>Type</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Action</th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {orders.map((item) => (
-
-                    <tr key={item.orderId}>
-
-                      <td>
-                        {item.orderId}
-                      </td>
-
-                      <td>
-                        <strong>
-                          {item.symbol}
-                        </strong>
-                      </td>
-
-                      <td>
-
-                        <span
-                          className={
-                            item.side === "BUY"
-                              ? "buy"
-                              : "sell"
-                          }
-                        >
-                          {item.side}
-                        </span>
-
-                      </td>
-
-                      <td>
-                        {item.type}
-                      </td>
-
-                      <td>
-                        ${Number(item.price).toFixed(2)}
-                      </td>
-
-                      <td>
-                        {item.quantity}
-                      </td>
-
-                      <td>
-
-                        <button
-                          className="cancel-button"
-                          onClick={() =>
-                            cancelOrder(item.orderId)
-                          }
-                        >
-                          Cancel
-                        </button>
-
-                      </td>
-
-                    </tr>
-
-                  ))}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          )}
-
+        <section className="panel activity-panel">
+          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions</h2></div><span className="live-pill"><i /> LIVE FEED</span></div>
+          {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : <div className="table-wrap"><table><thead><tr><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.key}><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
         </section>
-
-
-        {/* ================= LIVE TRADES ================= */}
-
-        <section className="card">
-
-          <div className="section-header">
-
-            <h2>Live Trades</h2>
-
-            <span className="live-label">
-              ● LIVE
-            </span>
-
-          </div>
-
-          {trades.length === 0 ? (
-
-            <div className="empty">
-              Waiting for live trades...
-            </div>
-
-          ) : (
-
-            <div className="table-container">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>Symbol</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {trades.map(
-                    (trade, index) => (
-
-                      <tr key={index}>
-
-                        <td>
-                          <strong>
-                            {trade.symbol}
-                          </strong>
-                        </td>
-
-                        <td>
-                          ${Number(trade.price).toFixed(2)}
-                        </td>
-
-                        <td>
-                          {trade.quantity}
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          )}
-
-        </section>
-
+        <footer><span>ORDERFLOW <b>·</b> MATCHING ENGINE</span><span>Market data is for demonstration purposes</span></footer>
       </main>
-
+      {toast && <div className={`toast ${toast.kind}`} role="status"><span>{toast.kind === "error" ? "!" : "✓"}</span>{toast.message}<button onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
     </div>
   );
+}
+
+function Metric({ label, value, detail, tone = "" }) {
+  return <article className="metric-card"><div className="metric-label">{label}<span className={`metric-indicator ${tone}`} /></div><strong>{value}</strong><small>{detail}</small></article>;
+}
+
+function BookSide({ title, orders, side, onCancel, cancelling }) {
+  const isBuy = side === "BUY";
+  const maximum = Math.max(...orders.map((item) => Number(item.quantity)), 1);
+  return <div className={`book-side ${isBuy ? "bids" : "asks"}`}><div className="book-title"><span>{title}</span><span>PRICE <b>·</b> SIZE</span></div>{orders.length ? orders.map((item) => <div className="book-row" key={item.orderId} style={{ "--depth": `${Math.max(16, Number(item.quantity) / maximum * 100)}%` }}><span className="book-price">{money(item.price)}</span><span className="book-size">{Number(item.quantity).toLocaleString()}</span><button className="book-cancel" onClick={() => onCancel(item.orderId)} disabled={cancelling === item.orderId} aria-label={`Cancel order ${item.orderId}`}>×</button></div>) : <div className="book-empty">No {isBuy ? "bids" : "asks"}</div>}</div>;
+}
+
+function EmptyState({ title, detail }) {
+  return <div className="empty-state"><span className="empty-mark">⌁</span><strong>{title}</strong><p>{detail}</p></div>;
 }
 
 export default App;
