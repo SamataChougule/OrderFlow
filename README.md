@@ -1,16 +1,53 @@
-# React + Vite
+# OrderFlow
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+OrderFlow is a dark, responsive trading workspace for exploring a live order book, submitting simulated orders, and following recent executions. The interface is built with React and Vite and connects to a separate backend through HTTP and WebSocket endpoints.
 
-Currently, two official plugins are available:
+## Highlights
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Best bid, best ask, spread, and active-order summaries
+- Price-sorted order book with order cancellation controls
+- Buy and sell limit or market order form with input validation and an estimated order value
+- Quick market watchlist, with the selected symbol remembered in the browser
+- Live execution tape with all-symbol and selected-symbol filters
+- API and WebSocket connection indicators, automatic stream reconnection, and refresh timestamps
+- Responsive layout and keyboard-visible focus states
 
-## React Compiler
+## Run locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Requirements: Node.js and a compatible OrderFlow backend listening on `http://localhost:8080`.
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Open the local URL printed by Vite. The development server proxies `/api` requests and `/ws` WebSocket connections to the backend on port `8080`.
+
+## Backend contract
+
+The frontend expects these backend routes:
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/orderbook?symbol=AAPL` | Returns `buyOrders` and `sellOrders` arrays, with each order containing `orderId`, `price`, and `quantity`. |
+| `POST` | `/api/orders` | Accepts an order JSON body with `orderId`, `symbol`, `side`, `type`, `price`, and `quantity`. |
+| `DELETE` | `/api/orderbook/:orderId` | Cancels an active order by ID. |
+| WebSocket | `/ws/market-data` | Streams JSON trade events with `symbol`, `price`, and `quantity`. |
+
+The UI treats market data as demonstration data. A market-order estimate uses the current best opposing quote when one is available; actual execution price and fees are determined by the backend.
+
+## Useful scripts
+
+```bash
+npm run dev      # Start the Vite development server
+npm run build    # Create a production build in dist/
+npm run preview  # Preview the production build locally
+npm run lint     # Run ESLint
+```
+
+## Tech stack
+
+- React 19
+- Vite
+- Plain CSS
+- HTTP `fetch` and the browser WebSocket API
