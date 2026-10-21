@@ -74,14 +74,22 @@ function App() {
     return () => { disposed = true; window.clearTimeout(retryTimer); socket?.close(); };
   }, []);
 
-  const bestBid = book.buyOrders[0];
-  const bestAsk = book.sellOrders[0];
+  const sortedBuyOrders = useMemo(
+    () => [...book.buyOrders].sort((left, right) => Number(right.price) - Number(left.price)),
+    [book.buyOrders],
+  );
+  const sortedSellOrders = useMemo(
+    () => [...book.sellOrders].sort((left, right) => Number(left.price) - Number(right.price)),
+    [book.sellOrders],
+  );
+  const bestBid = sortedBuyOrders[0];
+  const bestAsk = sortedSellOrders[0];
   const spread = bestBid && bestAsk ? Number(bestAsk.price) - Number(bestBid.price) : null;
   const activeCount = book.buyOrders.length + book.sellOrders.length;
   const orderRows = useMemo(() => [
-    ...book.sellOrders.map((item) => ({ ...item, side: "SELL" })),
-    ...book.buyOrders.map((item) => ({ ...item, side: "BUY" })),
-  ], [book]);
+    ...sortedSellOrders.map((item) => ({ ...item, side: "SELL" })),
+    ...sortedBuyOrders.map((item) => ({ ...item, side: "BUY" })),
+  ], [sortedBuyOrders, sortedSellOrders]);
   const visibleTrades = useMemo(
     () => showAllTrades ? trades : trades.filter((trade) => trade.symbol.toUpperCase() === symbol.toUpperCase()),
     [showAllTrades, trades, symbol],
@@ -170,7 +178,7 @@ function App() {
           <Metric label="BEST BID" value={bestBid ? money(bestBid.price) : "—"} detail={bestBid ? `${bestBid.quantity} shares` : "No buy orders"} tone="green" />
           <Metric label="BEST ASK" value={bestAsk ? money(bestAsk.price) : "—"} detail={bestAsk ? `${bestAsk.quantity} shares` : "No sell orders"} tone="red" />
           <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : "Bid / ask difference"} />
-          <Metric label="ACTIVE ORDERS" value={activeCount.toLocaleString()} detail={`${book.buyOrders.length} bids · ${book.sellOrders.length} asks`} />
+          <Metric label="ACTIVE ORDERS" value={activeCount.toLocaleString()} detail={`${sortedBuyOrders.length} bids · ${sortedSellOrders.length} asks`} />
         </section>
 
         <div className="main-grid">
@@ -191,9 +199,9 @@ function App() {
           <section className="panel book-panel">
             <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
             {orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Waiting for connection"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : "The order book will appear when the backend is available."} /> : <div className="book-sides">
-              <BookSide title="ASKS · SELL" orders={book.sellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} cancelling={cancelling} />
+              <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} cancelling={cancelling} />
               <div className="spread-line"><span>SPREAD</span><strong>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
-              <BookSide title="BIDS · BUY" orders={book.buyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} cancelling={cancelling} />
+              <BookSide title="BIDS · BUY" orders={sortedBuyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} cancelling={cancelling} />
             </div>}
           </section>
         </div>
