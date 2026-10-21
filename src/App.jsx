@@ -4,10 +4,14 @@ import "./App.css";
 const initialOrder = { symbol: "AAPL", side: "BUY", type: "LIMIT", price: "", quantity: "" };
 const watchlist = ["AAPL", "MSFT", "NVDA", "TSLA"];
 const money = (value) => Number(value || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+const savedSymbol = () => {
+  try { return window.localStorage.getItem("orderflow.market")?.trim().toUpperCase() || "AAPL"; }
+  catch { return "AAPL"; }
+};
 
 function App() {
-  const [symbol, setSymbol] = useState("AAPL");
-  const [order, setOrder] = useState(initialOrder);
+  const [symbol, setSymbol] = useState(savedSymbol);
+  const [order, setOrder] = useState(() => ({ ...initialOrder, symbol: savedSymbol() }));
   const [book, setBook] = useState({ buyOrders: [], sellOrders: [] });
   const [trades, setTrades] = useState([]);
   const [showAllTrades, setShowAllTrades] = useState(true);
@@ -26,6 +30,11 @@ function App() {
   }, []);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem("orderflow.market", symbol); }
+    catch { /* Market selection remains available if storage is disabled. */ }
+  }, [symbol]);
 
   const loadOrderBook = useCallback(async () => {
     const currentRequest = ++requestId.current;
