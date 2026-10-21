@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 const initialOrder = { symbol: "AAPL", side: "BUY", type: "LIMIT", price: "", quantity: "" };
+const watchlist = ["AAPL", "MSFT", "NVDA", "TSLA"];
 const money = (value) => Number(value || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
 
 function App() {
@@ -98,6 +99,11 @@ function App() {
     if (name === "symbol") setSymbol(value.toUpperCase());
   };
 
+  const selectSymbol = (nextSymbol) => {
+    setSymbol(nextSymbol);
+    setOrder((current) => ({ ...current, symbol: nextSymbol }));
+  };
+
   const placeOrder = async (event) => {
     event.preventDefault();
     const quantity = Number(order.quantity);
@@ -157,6 +163,8 @@ function App() {
 
       <main id="top" className="workspace">
         <div className="page-heading"><div><div className="eyebrow">TRADING WORKSPACE <span> / </span> {symbol || "MARKET"}</div><h1>Market overview</h1><p>Live order flow, market depth, and execution activity.</p></div><button className="refresh-button" onClick={loadOrderBook} aria-label="Refresh order book"><span>↻</span> Refresh</button></div>
+
+        <nav className="watchlist" aria-label="Quick market selection">{watchlist.map((item) => <button key={item} type="button" className={symbol === item ? "active" : ""} aria-pressed={symbol === item} onClick={() => selectSymbol(item)}>{item}</button>)}</nav>
 
         <section className="metric-grid" aria-label="Market summary">
           <Metric label="BEST BID" value={bestBid ? money(bestBid.price) : "—"} detail={bestBid ? `${bestBid.quantity} shares` : "No buy orders"} tone="green" />
