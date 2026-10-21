@@ -17,6 +17,8 @@ function App() {
   const [showAllTrades, setShowAllTrades] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
   const [streamConnected, setStreamConnected] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [cancelling, setCancelling] = useState(null);
   const [toast, setToast] = useState(null);
@@ -45,10 +47,17 @@ function App() {
       if (currentRequest !== requestId.current) return;
       setBook({ buyOrders: data.buyOrders || [], sellOrders: data.sellOrders || [] });
       setApiConnected(true);
+      setLastUpdated(new Date());
     } catch {
       if (currentRequest === requestId.current) setApiConnected(false);
     }
   }, [symbol]);
+
+  const refreshOrderBook = async () => {
+    setRefreshing(true);
+    await loadOrderBook();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     const initialLoad = window.setTimeout(loadOrderBook, 0);
@@ -179,7 +188,7 @@ function App() {
       </header>
 
       <main id="top" className="workspace">
-        <div className="page-heading"><div><div className="eyebrow">TRADING WORKSPACE <span> / </span> {symbol || "MARKET"}</div><h1>Market overview</h1><p>Live order flow, market depth, and execution activity.</p></div><button className="refresh-button" onClick={loadOrderBook} aria-label="Refresh order book"><span>↻</span> Refresh</button></div>
+        <div className="page-heading"><div><div className="eyebrow">TRADING WORKSPACE <span> / </span> {symbol || "MARKET"}</div><h1>Market overview</h1><p>Live order flow, market depth, and execution activity.</p></div><div className="refresh-group"><span className="last-updated" aria-live="polite">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "Waiting for market data"}</span><button className={`refresh-button ${refreshing ? "refreshing" : ""}`} onClick={refreshOrderBook} disabled={refreshing} aria-label="Refresh order book"><span>↻</span>{refreshing ? "Refreshing" : "Refresh"}</button></div></div>
 
         <nav className="watchlist" aria-label="Quick market selection">{watchlist.map((item) => <button key={item} type="button" className={symbol === item ? "active" : ""} aria-pressed={symbol === item} onClick={() => selectSymbol(item)}>{item}</button>)}</nav>
 
