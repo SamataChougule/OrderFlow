@@ -83,7 +83,7 @@ function App() {
         try {
           const trade = JSON.parse(data);
           if (trade.symbol && Number.isFinite(Number(trade.price))) {
-            setTrades((current) => [{ ...trade, key: `${Date.now()}-${Math.random()}` }, ...current].slice(0, 30));
+            setTrades((current) => [{ ...trade, receivedAt: Date.now(), key: `${Date.now()}-${Math.random()}` }, ...current].slice(0, 30));
           }
         } catch { /* The server's initial connection notice is informational. */ }
       };
@@ -236,7 +236,7 @@ function App() {
 
         <section className="panel activity-panel">
           <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions <span className="trade-count">{visibleTrades.length}</span></h2></div><div className="activity-controls"><button className="tape-filter" type="button" aria-pressed={!showAllTrades} onClick={() => setShowAllTrades((value) => !value)}>{showAllTrades ? "ALL SYMBOLS" : `${symbol} ONLY`}</button><span className="live-pill"><i /> LIVE FEED</span></div></div>
-          {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : visibleTrades.length === 0 ? <EmptyState title={`No ${symbol} executions`} detail="Switch to all symbols to see the latest market activity." /> : <div className="table-wrap"><table><thead><tr><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{visibleTrades.map((trade) => <tr key={trade.key}><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
+          {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : visibleTrades.length === 0 ? <EmptyState title={`No ${symbol} executions`} detail="Switch to all symbols to see the latest market activity." /> : <div className="table-wrap"><table><thead><tr><th>Time</th><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{visibleTrades.map((trade) => <tr key={trade.key}><td className="mono">{new Date(trade.receivedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
         </section>
         <footer><span>ORDERFLOW <b>·</b> MATCHING ENGINE</span><span>Market data is for demonstration purposes</span></footer>
       </main>
