@@ -135,6 +135,11 @@ function App() {
     setOrder((current) => ({ ...current, symbol: nextSymbol }));
   };
 
+  const useBestLimitPrice = () => {
+    const price = order.side === "BUY" ? bestBid?.price : bestAsk?.price;
+    if (price !== undefined) setOrder((current) => ({ ...current, price: String(price) }));
+  };
+
   const placeOrder = async (event) => {
     event.preventDefault();
     const quantity = Number(order.quantity);
@@ -212,7 +217,7 @@ function App() {
               <div className="field"><label>Direction</label><div className="segmented"><button type="button" aria-pressed={order.side === "BUY"} className={order.side === "BUY" ? "selected buy-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "BUY" }))}>Buy</button><button type="button" aria-pressed={order.side === "SELL"} className={order.side === "SELL" ? "selected sell-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "SELL" }))}>Sell</button></div></div>
               <div className="field"><label htmlFor="order-type">Order type</label><select id="order-type" name="type" value={order.type} onChange={handleChange}><option value="LIMIT">Limit</option><option value="MARKET">Market</option></select></div>
               <div className="field"><label htmlFor="order-quantity">Quantity</label><input id="order-quantity" name="quantity" type="number" min="1" step="1" placeholder="0" value={order.quantity} onChange={handleChange} required /></div>
-              {order.type === "LIMIT" && <div className="field"><label htmlFor="order-price">Limit price <span>USD</span></label><div className="price-input"><span>$</span><input id="order-price" name="price" type="number" min="0.01" step="0.01" placeholder="0.00" value={order.price} onChange={handleChange} required /></div></div>}
+              {order.type === "LIMIT" && <div className="field"><label htmlFor="order-price">Limit price <button className="price-fill" type="button" onClick={useBestLimitPrice} disabled={order.side === "BUY" ? !bestBid : !bestAsk}>Use best {order.side === "BUY" ? "bid" : "ask"}</button></label><div className="price-input"><span>$</span><input id="order-price" name="price" type="number" min="0.01" step="0.01" placeholder="0.00" value={order.price} onChange={handleChange} required /></div></div>}
               {order.type === "MARKET" && <div className="market-note"><span>◎</span><span>Market orders execute against the best available price.</span></div>}
               <div className="order-estimate" aria-live="polite"><span>ESTIMATED ORDER VALUE</span><strong>{estimatedValue === null ? "—" : money(estimatedValue)}</strong><small>{order.type === "LIMIT" ? "Quantity × limit price · before fees" : estimatedValue === null ? `No ${order.side === "BUY" ? "ask" : "bid"} available to estimate` : `Based on current best ${order.side === "BUY" ? "ask" : "bid"} · before fees`}</small></div>
               <button className={`submit-button ${order.side === "SELL" ? "submit-sell" : ""}`} type="submit" disabled={submitting || !apiConnected}>{submitting ? "Sending order…" : `${order.side === "BUY" ? "Buy" : "Sell"} ${order.symbol || "shares"}` }<span>→</span></button>
