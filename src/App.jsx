@@ -140,6 +140,22 @@ function App() {
     if (price !== undefined) setOrder((current) => ({ ...current, price: String(price) }));
   };
 
+  const exportTrades = () => {
+    if (visibleTrades.length === 0) return;
+    const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const rows = [
+      ["Time", "Symbol", "Price", "Quantity", "Notional"],
+      ...visibleTrades.map((trade) => [new Date(trade.receivedAt).toISOString(), trade.symbol, trade.price, trade.quantity, Number(trade.price) * Number(trade.quantity)]),
+    ];
+    const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `orderflow-trades-${symbol.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const placeOrder = async (event) => {
     event.preventDefault();
     const quantity = Number(order.quantity);
@@ -235,7 +251,7 @@ function App() {
         </div>
 
         <section className="panel activity-panel">
-          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions <span className="trade-count">{visibleTrades.length}</span></h2></div><div className="activity-controls"><button className="tape-filter" type="button" aria-pressed={!showAllTrades} onClick={() => setShowAllTrades((value) => !value)}>{showAllTrades ? "ALL SYMBOLS" : `${symbol} ONLY`}</button><span className="live-pill"><i /> LIVE FEED</span></div></div>
+          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions <span className="trade-count">{visibleTrades.length}</span></h2></div><div className="activity-controls"><button className="export-button" type="button" onClick={exportTrades} disabled={visibleTrades.length === 0}>Export CSV</button><button className="tape-filter" type="button" aria-pressed={!showAllTrades} onClick={() => setShowAllTrades((value) => !value)}>{showAllTrades ? "ALL SYMBOLS" : `${symbol} ONLY`}</button><span className="live-pill"><i /> LIVE FEED</span></div></div>
           {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : visibleTrades.length === 0 ? <EmptyState title={`No ${symbol} executions`} detail="Switch to all symbols to see the latest market activity." /> : <div className="table-wrap"><table><thead><tr><th>Time</th><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{visibleTrades.map((trade) => <tr key={trade.key}><td className="mono">{new Date(trade.receivedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
         </section>
         <footer><span>ORDERFLOW <b>·</b> MATCHING ENGINE</span><span>Market data is for demonstration purposes</span></footer>
