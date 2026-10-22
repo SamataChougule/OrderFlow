@@ -268,7 +268,17 @@ function Metric({ label, value, detail, tone = "" }) {
 function BookSide({ title, orders, side, onCancel, cancelling }) {
   const isBuy = side === "BUY";
   const maximum = Math.max(...orders.map((item) => Number(item.quantity)), 1);
-  return <div className={`book-side ${isBuy ? "bids" : "asks"}`}><div className="book-title"><span>{title}</span><span>PRICE <b>·</b> SIZE</span></div>{orders.length ? orders.map((item) => <div className="book-row" key={item.orderId} style={{ "--depth": `${Math.max(16, Number(item.quantity) / maximum * 100)}%` }}><span className="book-price">{money(item.price)}</span><span className="book-size">{Number(item.quantity).toLocaleString()}</span><button className="book-cancel" onClick={() => onCancel(item.orderId)} disabled={cancelling === item.orderId} aria-label={`Cancel order ${item.orderId}`}>×</button></div>) : <div className="book-empty">No {isBuy ? "bids" : "asks"}</div>}</div>;
+  let cumulativeQuantity = 0;
+  return <div className={`book-side ${isBuy ? "bids" : "asks"}`}>
+    <div className="book-title"><span>{title}</span><span>PRICE</span><span>SIZE</span><span>TOTAL</span><span /></div>
+    {orders.length ? orders.map((item) => {
+      cumulativeQuantity += Number(item.quantity) || 0;
+      return <div className="book-row" key={item.orderId} style={{ "--depth": `${Math.max(16, Number(item.quantity) / maximum * 100)}%` }}>
+        <span className="book-price">{money(item.price)}</span><span className="book-size">{Number(item.quantity).toLocaleString()}</span><span className="book-total">{cumulativeQuantity.toLocaleString()}</span>
+        <button className="book-cancel" onClick={() => onCancel(item.orderId)} disabled={cancelling === item.orderId} aria-label={`Cancel order ${item.orderId}`}>×</button>
+      </div>;
+    }) : <div className="book-empty">No {isBuy ? "bids" : "asks"}</div>}
+  </div>;
 }
 
 function EmptyState({ title, detail }) {
