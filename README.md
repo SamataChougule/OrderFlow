@@ -23,6 +23,8 @@ npm run dev
 
 Open the local URL printed by Vite. The development server proxies `/api` requests and `/ws` WebSocket connections to the backend on port `8080`.
 
+To use a backend at another address, copy `.env.example` to `.env.local`, set `VITE_BACKEND_URL` to its HTTP or HTTPS origin, and restart Vite. The WebSocket proxy derives its `ws` or `wss` address from the same setting.
+
 ## Backend contract
 
 The frontend expects these backend routes:
