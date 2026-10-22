@@ -140,6 +140,8 @@ function App() {
     if (price !== undefined) setOrder((current) => ({ ...current, price: String(price) }));
   };
 
+  const resetOrderForm = () => setOrder({ ...initialOrder, symbol });
+
   const exportTrades = () => {
     if (visibleTrades.length === 0) return;
     const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -227,7 +229,7 @@ function App() {
 
         <div className="main-grid">
           <section className="panel order-panel">
-            <div className="panel-heading"><div><div className="eyebrow">EXECUTION</div><h2>Place an order</h2></div><span className="panel-icon">↗</span></div>
+            <div className="panel-heading"><div><div className="eyebrow">EXECUTION</div><h2>Place an order</h2></div><button className="reset-order" type="button" onClick={resetOrderForm}>Reset form</button></div>
             <form className="order-form" onSubmit={placeOrder}>
               <div className="field"><label htmlFor="order-symbol">Instrument</label><input id="order-symbol" name="symbol" value={order.symbol} onChange={handleChange} maxLength={20} required autoComplete="off" /></div>
               <div className="field"><label>Direction</label><div className="segmented"><button type="button" aria-pressed={order.side === "BUY"} className={order.side === "BUY" ? "selected buy-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "BUY" }))}>Buy</button><button type="button" aria-pressed={order.side === "SELL"} className={order.side === "SELL" ? "selected sell-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "SELL" }))}>Sell</button></div></div>
