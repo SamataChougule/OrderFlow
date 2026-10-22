@@ -40,6 +40,17 @@ function App() {
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
+    const dismissToast = (event) => {
+      if (event.key === "Escape") {
+        window.clearTimeout(toastTimer.current);
+        setToast(null);
+      }
+    };
+    window.addEventListener("keydown", dismissToast);
+    return () => window.removeEventListener("keydown", dismissToast);
+  }, []);
+
+  useEffect(() => {
     tapePausedRef.current = tapePaused;
     if (!tapePaused && queuedTrades.current.length) {
       const queued = queuedTrades.current;
@@ -291,7 +302,7 @@ function App() {
         </section>
         <footer><span>ORDERFLOW <b>·</b> MATCHING ENGINE</span><span>Market data is for demonstration purposes</span></footer>
       </main>
-      {toast && <div className={`toast ${toast.kind}`} role="status"><span>{toast.kind === "error" ? "!" : "✓"}</span>{toast.message}<button onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
+      {toast && <div className={`toast ${toast.kind}`} role={toast.kind === "error" ? "alert" : "status"}><span aria-hidden="true">{toast.kind === "error" ? "!" : "✓"}</span>{toast.message}<button onClick={() => { window.clearTimeout(toastTimer.current); setToast(null); }} aria-label="Dismiss notification">×</button></div>}
     </div>
   );
 }
