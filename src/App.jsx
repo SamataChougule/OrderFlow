@@ -18,6 +18,7 @@ function App() {
   const [queuedTradeCount, setQueuedTradeCount] = useState(0);
   const [showAllTrades, setShowAllTrades] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [apiError, setApiError] = useState("");
   const [bookLoading, setBookLoading] = useState(true);
   const [streamConnected, setStreamConnected] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,9 +64,13 @@ function App() {
       if (currentRequest !== requestId.current) return;
       setBook({ buyOrders: data.buyOrders || [], sellOrders: data.sellOrders || [] });
       setApiConnected(true);
+      setApiError("");
       setLastUpdated(new Date());
-    } catch {
-      if (currentRequest === requestId.current) setApiConnected(false);
+    } catch (error) {
+      if (currentRequest === requestId.current) {
+        setApiConnected(false);
+        setApiError(error.message || "Could not reach the OrderFlow backend.");
+      }
     } finally {
       if (currentRequest === requestId.current) setBookLoading(false);
     }
@@ -272,7 +277,7 @@ function App() {
 
           <section className="panel book-panel">
             <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
-            {bookLoading && orderRows.length === 0 ? <EmptyState title={`Loading ${symbol} book`} detail="Getting the latest bid and ask orders…" /> : orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Waiting for connection"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : "The order book will appear when the backend is available."} /> : <div className="book-sides">
+            {bookLoading && orderRows.length === 0 ? <EmptyState title={`Loading ${symbol} book`} detail="Getting the latest bid and ask orders…" /> : orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Backend unavailable"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : apiError || "The order book will appear when the backend is available."} action={!apiConnected ? loadOrderBook : undefined} actionLabel="Try again" /> : <div className="book-sides">
               <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
               <div className="spread-line"><span>SPREAD</span><strong>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
               <BookSide title="BIDS · BUY" orders={sortedBuyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
@@ -311,8 +316,8 @@ function BookSide({ title, orders, side, onCancel, onSelectPrice, cancelling }) 
   </div>;
 }
 
-function EmptyState({ title, detail }) {
-  return <div className="empty-state"><span className="empty-mark">⌁</span><strong>{title}</strong><p>{detail}</p></div>;
+function EmptyState({ title, detail, action, actionLabel }) {
+  return <div className="empty-state"><span className="empty-mark">⌁</span><strong>{title}</strong><p>{detail}</p>{action && <button className="empty-action" type="button" onClick={action}>{actionLabel || "Retry"}</button>}</div>;
 }
 
 export default App;
