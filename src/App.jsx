@@ -167,7 +167,11 @@ function App() {
 
   const exportTrades = () => {
     if (visibleTrades.length === 0) return;
-    const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const escapeCsv = (value) => {
+      const text = String(value ?? "");
+      const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replaceAll('"', '""')}"`;
+    };
     const rows = [
       ["Time", "Symbol", "Price", "Quantity", "Notional"],
       ...visibleTrades.map((trade) => [new Date(trade.receivedAt).toISOString(), trade.symbol, trade.price, trade.quantity, Number(trade.price) * Number(trade.quantity)]),
@@ -176,7 +180,8 @@ function App() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `orderflow-trades-${symbol.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    const marketLabel = showAllTrades ? "all-symbols" : symbol.toLowerCase();
+    link.download = `orderflow-trades-${marketLabel}-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
