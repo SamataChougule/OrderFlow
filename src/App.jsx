@@ -16,6 +16,7 @@ function App() {
   const [trades, setTrades] = useState([]);
   const [showAllTrades, setShowAllTrades] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [bookLoading, setBookLoading] = useState(true);
   const [streamConnected, setStreamConnected] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -40,6 +41,7 @@ function App() {
 
   const loadOrderBook = useCallback(async () => {
     const currentRequest = ++requestId.current;
+    setBookLoading(true);
     try {
       const response = await fetch(`/api/orderbook?symbol=${encodeURIComponent(symbol)}`);
       if (!response.ok) throw new Error(`Order book request failed (${response.status})`);
@@ -50,6 +52,8 @@ function App() {
       setLastUpdated(new Date());
     } catch {
       if (currentRequest === requestId.current) setApiConnected(false);
+    } finally {
+      if (currentRequest === requestId.current) setBookLoading(false);
     }
   }, [symbol]);
 
@@ -60,6 +64,7 @@ function App() {
   };
 
   useEffect(() => {
+    setBook({ buyOrders: [], sellOrders: [] });
     const initialLoad = window.setTimeout(loadOrderBook, 0);
     const interval = window.setInterval(loadOrderBook, 2500);
     return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); };
@@ -216,7 +221,7 @@ function App() {
 
           <section className="panel book-panel">
             <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
-            {orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Waiting for connection"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : "The order book will appear when the backend is available."} /> : <div className="book-sides">
+            {bookLoading && orderRows.length === 0 ? <EmptyState title={`Loading ${symbol} book`} detail="Getting the latest bid and ask orders…" /> : orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Waiting for connection"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : "The order book will appear when the backend is available."} /> : <div className="book-sides">
               <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} cancelling={cancelling} />
               <div className="spread-line"><span>SPREAD</span><strong>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
               <BookSide title="BIDS · BUY" orders={sortedBuyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} cancelling={cancelling} />
