@@ -254,8 +254,8 @@ function App() {
         </a>
         <div className="topbar-right">
           <label className="symbol-picker"><span>MARKET</span><input aria-label="Market symbol" value={symbol} maxLength={20} onChange={handleChange} name="symbol" /></label>
-          <div className="connection"><i className={apiConnected ? "connected" : ""} />API {apiConnected ? "CONNECTED" : "OFFLINE"}</div>
-          <div className="connection"><i className={streamConnected ? "connected" : ""} />STREAM {streamConnected ? "LIVE" : "RECONNECTING"}</div>
+          <div className="connection" role="status" aria-live="polite" aria-label={`Order book API ${apiConnected ? "connected" : "offline"}`}><i aria-hidden="true" className={apiConnected ? "connected" : ""} />API {apiConnected ? "CONNECTED" : "OFFLINE"}</div>
+          <div className="connection" role="status" aria-live="polite" aria-label={`Market data stream ${streamConnected ? "live" : "reconnecting"}`}><i aria-hidden="true" className={streamConnected ? "connected" : ""} />STREAM {streamConnected ? "LIVE" : "RECONNECTING"}</div>
         </div>
       </header>
 
