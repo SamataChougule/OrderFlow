@@ -142,6 +142,10 @@ function App() {
 
   const resetOrderForm = () => setOrder({ ...initialOrder, symbol });
 
+  const selectBookPrice = (side, price) => {
+    setOrder((current) => ({ ...current, symbol, side, type: "LIMIT", price: String(price) }));
+  };
+
   const exportTrades = () => {
     if (visibleTrades.length === 0) return;
     const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -245,9 +249,9 @@ function App() {
           <section className="panel book-panel">
             <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
             {bookLoading && orderRows.length === 0 ? <EmptyState title={`Loading ${symbol} book`} detail="Getting the latest bid and ask orders…" /> : orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Waiting for connection"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : "The order book will appear when the backend is available."} /> : <div className="book-sides">
-              <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} cancelling={cancelling} />
+              <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
               <div className="spread-line"><span>SPREAD</span><strong>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
-              <BookSide title="BIDS · BUY" orders={sortedBuyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} cancelling={cancelling} />
+              <BookSide title="BIDS · BUY" orders={sortedBuyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
             </div>}
           </section>
         </div>
@@ -267,7 +271,7 @@ function Metric({ label, value, detail, tone = "" }) {
   return <article className="metric-card"><div className="metric-label">{label}<span className={`metric-indicator ${tone}`} /></div><strong>{value}</strong><small>{detail}</small></article>;
 }
 
-function BookSide({ title, orders, side, onCancel, cancelling }) {
+function BookSide({ title, orders, side, onCancel, onSelectPrice, cancelling }) {
   const isBuy = side === "BUY";
   const maximum = Math.max(...orders.map((item) => Number(item.quantity)), 1);
   let cumulativeQuantity = 0;
@@ -276,7 +280,7 @@ function BookSide({ title, orders, side, onCancel, cancelling }) {
     {orders.length ? orders.map((item) => {
       cumulativeQuantity += Number(item.quantity) || 0;
       return <div className="book-row" key={item.orderId} style={{ "--depth": `${Math.max(16, Number(item.quantity) / maximum * 100)}%` }}>
-        <span className="book-price">{money(item.price)}</span><span className="book-size">{Number(item.quantity).toLocaleString()}</span><span className="book-total">{cumulativeQuantity.toLocaleString()}</span>
+        <button className="book-price book-price-select" type="button" onClick={() => onSelectPrice(isBuy ? "BUY" : "SELL", item.price)} aria-label={`Use ${money(item.price)} ${isBuy ? "bid" : "ask"} as limit price`}>{money(item.price)}</button><span className="book-size">{Number(item.quantity).toLocaleString()}</span><span className="book-total">{cumulativeQuantity.toLocaleString()}</span>
         <button className="book-cancel" onClick={() => onCancel(item.orderId)} disabled={cancelling === item.orderId} aria-label={`Cancel order ${item.orderId}`}>×</button>
       </div>;
     }) : <div className="book-empty">No {isBuy ? "bids" : "asks"}</div>}
