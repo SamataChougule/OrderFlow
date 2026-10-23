@@ -3,6 +3,7 @@ import "./App.css";
 
 const initialOrder = { symbol: "AAPL", side: "BUY", type: "LIMIT", price: "", quantity: "" };
 const watchlist = ["AAPL", "MSFT", "NVDA", "TSLA"];
+const isValidSymbol = (value) => /^[A-Z0-9][A-Z0-9.-]{0,9}$/.test(value.trim().toUpperCase());
 const money = (value) => Number(value || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
 const savedSymbol = () => {
   try { return window.localStorage.getItem("orderflow.market")?.trim().toUpperCase() || "AAPL"; }
@@ -206,8 +207,12 @@ function App() {
     event.preventDefault();
     const quantity = Number(order.quantity);
     const price = Number(order.price);
-    if (!order.symbol.trim() || !Number.isInteger(quantity) || quantity <= 0 || (order.type === "LIMIT" && (!Number.isFinite(price) || price <= 0))) {
-      notify("Enter a symbol, a whole share quantity, and a valid limit price.", "error");
+    if (!isValidSymbol(order.symbol)) {
+      notify("Use 1–10 letters, numbers, dots, or dashes for the market symbol.", "error");
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0 || (order.type === "LIMIT" && (!Number.isFinite(price) || price <= 0))) {
+      notify("Enter a whole share quantity and a valid limit price.", "error");
       return;
     }
     setSubmitting(true);
@@ -253,7 +258,7 @@ function App() {
           <span>order<span className="brand-accent">flow</span><small>MARKET TERMINAL</small></span>
         </a>
         <div className="topbar-right">
-          <label className="symbol-picker"><span>MARKET</span><input aria-label="Market symbol" value={symbol} maxLength={20} onChange={handleChange} name="symbol" /></label>
+          <label className="symbol-picker"><span>MARKET</span><input aria-label="Market symbol" value={symbol} maxLength={10} pattern="[A-Za-z0-9][A-Za-z0-9.-]{0,9}" onChange={handleChange} name="symbol" /></label>
           <div className="connection" role="status" aria-live="polite" aria-label={`Order book API ${apiConnected ? "connected" : "offline"}`}><i aria-hidden="true" className={apiConnected ? "connected" : ""} />API {apiConnected ? "CONNECTED" : "OFFLINE"}</div>
           <div className="connection" role="status" aria-live="polite" aria-label={`Market data stream ${streamConnected ? "live" : "reconnecting"}`}><i aria-hidden="true" className={streamConnected ? "connected" : ""} />STREAM {streamConnected ? "LIVE" : "RECONNECTING"}</div>
         </div>
@@ -275,7 +280,7 @@ function App() {
           <section className="panel order-panel">
             <div className="panel-heading"><div><div className="eyebrow">EXECUTION</div><h2>Place an order</h2></div><button className="reset-order" type="button" onClick={resetOrderForm}>Reset form</button></div>
             <form className="order-form" onSubmit={placeOrder}>
-              <div className="field"><label htmlFor="order-symbol">Instrument</label><input id="order-symbol" name="symbol" value={order.symbol} onChange={handleChange} maxLength={20} required autoComplete="off" /></div>
+              <div className="field"><label htmlFor="order-symbol">Instrument</label><input id="order-symbol" name="symbol" value={order.symbol} onChange={handleChange} maxLength={10} pattern="[A-Za-z0-9][A-Za-z0-9.-]{0,9}" title="Use 1–10 letters, numbers, dots, or dashes." required autoComplete="off" /></div>
               <div className="field"><label>Direction</label><div className="segmented"><button type="button" aria-pressed={order.side === "BUY"} className={order.side === "BUY" ? "selected buy-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "BUY" }))}>Buy</button><button type="button" aria-pressed={order.side === "SELL"} className={order.side === "SELL" ? "selected sell-selected" : ""} onClick={() => setOrder((current) => ({ ...current, side: "SELL" }))}>Sell</button></div></div>
               <div className="field"><label htmlFor="order-type">Order type</label><select id="order-type" name="type" value={order.type} onChange={handleChange}><option value="LIMIT">Limit</option><option value="MARKET">Market</option></select></div>
               <div className="field"><label htmlFor="order-quantity">Quantity</label><input id="order-quantity" name="quantity" type="number" min="1" step="1" placeholder="0" value={order.quantity} onChange={handleChange} required /><div className="quantity-presets" aria-label="Quick quantity selection">{[10, 25, 100].map((quantity) => <button key={quantity} type="button" onClick={() => setOrder((current) => ({ ...current, quantity: String(quantity) }))}>{quantity}</button>)}</div></div>
