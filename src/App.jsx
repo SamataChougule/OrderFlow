@@ -336,7 +336,7 @@ function BookSide({ title, orders, side, onCancel, onSelectPrice, cancelling }) 
       cumulativeQuantity += Number(item.quantity) || 0;
       return <div className="book-row" key={item.orderId} style={{ "--depth": `${Math.max(16, Number(item.quantity) / maximum * 100)}%` }}>
         <button className="book-price book-price-select" type="button" onClick={() => onSelectPrice(isBuy ? "BUY" : "SELL", item.price)} aria-label={`Use ${money(item.price)} ${isBuy ? "bid" : "ask"} as limit price`}>{money(item.price)}</button><span className="book-size">{Number(item.quantity).toLocaleString()}</span><span className="book-total">{cumulativeQuantity.toLocaleString()}</span>
-        <button className="book-cancel" onClick={() => onCancel(item.orderId)} disabled={cancelling === item.orderId} aria-label={`Cancel order ${item.orderId}`}>×</button>
+        <button className="book-cancel" onClick={() => onCancel(item.orderId)} disabled={cancelling !== null} aria-busy={cancelling === item.orderId} aria-label={cancelling === item.orderId ? `Cancelling order ${item.orderId}` : `Cancel order ${item.orderId}`}>{cancelling === item.orderId ? "…" : "×"}</button>
       </div>;
     }) : <div className="book-empty">No {isBuy ? "bids" : "asks"}</div>}
   </div>;
