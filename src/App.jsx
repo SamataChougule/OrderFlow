@@ -18,6 +18,7 @@ function App() {
   const [tapePaused, setTapePaused] = useState(false);
   const [queuedTradeCount, setQueuedTradeCount] = useState(0);
   const [showAllTrades, setShowAllTrades] = useState(true);
+  const [tradeSort, setTradeSort] = useState("newest");
   const [apiConnected, setApiConnected] = useState(false);
   const [apiError, setApiError] = useState("");
   const [bookLoading, setBookLoading] = useState(true);
@@ -149,10 +150,14 @@ function App() {
     ...sortedSellOrders.map((item) => ({ ...item, side: "SELL" })),
     ...sortedBuyOrders.map((item) => ({ ...item, side: "BUY" })),
   ], [sortedBuyOrders, sortedSellOrders]);
-  const visibleTrades = useMemo(
-    () => showAllTrades ? trades : trades.filter((trade) => trade.symbol.toUpperCase() === symbol.toUpperCase()),
-    [showAllTrades, trades, symbol],
-  );
+  const visibleTrades = useMemo(() => {
+    const filtered = showAllTrades ? trades : trades.filter((trade) => trade.symbol.toUpperCase() === symbol.toUpperCase());
+    return [...filtered].sort((left, right) => {
+      if (tradeSort === "price") return Number(right.price) - Number(left.price);
+      if (tradeSort === "quantity") return Number(right.quantity) - Number(left.quantity);
+      return right.receivedAt - left.receivedAt;
+    });
+  }, [showAllTrades, trades, symbol, tradeSort]);
   const referencePrice = order.type === "LIMIT"
     ? Number(order.price)
     : Number(order.side === "BUY" ? bestAsk?.price : bestBid?.price);
@@ -307,7 +312,7 @@ function App() {
         </div>
 
         <section className="panel activity-panel">
-          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions <span className="trade-count">{visibleTrades.length}</span></h2></div><div className="activity-controls"><button className="export-button" type="button" onClick={exportTrades} disabled={visibleTrades.length === 0}>Export CSV</button><button className="clear-tape" type="button" onClick={() => { setTrades([]); queuedTrades.current = []; setQueuedTradeCount(0); }} disabled={trades.length === 0 && queuedTradeCount === 0}>Clear</button><button className="tape-filter" type="button" aria-pressed={!showAllTrades} onClick={() => setShowAllTrades((value) => !value)}>{showAllTrades ? "ALL SYMBOLS" : `${symbol} ONLY`}</button><button className="tape-pause" type="button" aria-pressed={tapePaused} onClick={() => setTapePaused((paused) => !paused)}>{tapePaused ? `Resume${queuedTradeCount ? ` (${queuedTradeCount})` : ""}` : "Pause"}</button><span className={`live-pill ${tapePaused ? "paused" : ""}`}><i /> {tapePaused ? "PAUSED" : "LIVE FEED"}</span></div></div>
+          <div className="panel-heading activity-heading"><div><div className="eyebrow">TAPE</div><h2>Recent executions <span className="trade-count">{visibleTrades.length}</span></h2></div><div className="activity-controls"><button className="export-button" type="button" onClick={exportTrades} disabled={visibleTrades.length === 0}>Export CSV</button><button className="clear-tape" type="button" onClick={() => { setTrades([]); queuedTrades.current = []; setQueuedTradeCount(0); }} disabled={trades.length === 0 && queuedTradeCount === 0}>Clear</button><select className="trade-sort" aria-label="Sort executions" value={tradeSort} onChange={(event) => setTradeSort(event.target.value)}><option value="newest">Newest</option><option value="price">Highest price</option><option value="quantity">Largest size</option></select><button className="tape-filter" type="button" aria-pressed={!showAllTrades} onClick={() => setShowAllTrades((value) => !value)}>{showAllTrades ? "ALL SYMBOLS" : `${symbol} ONLY`}</button><button className="tape-pause" type="button" aria-pressed={tapePaused} onClick={() => setTapePaused((paused) => !paused)}>{tapePaused ? `Resume${queuedTradeCount ? ` (${queuedTradeCount})` : ""}` : "Pause"}</button><span className={`live-pill ${tapePaused ? "paused" : ""}`}><i /> {tapePaused ? "PAUSED" : "LIVE FEED"}</span></div></div>
           {trades.length === 0 ? <EmptyState title="No executions yet" detail="Completed trades will stream here in real time." /> : visibleTrades.length === 0 ? <EmptyState title={`No ${symbol} executions`} detail="Switch to all symbols to see the latest market activity." /> : <div className="table-wrap"><table><thead><tr><th>Time</th><th>Instrument</th><th>Price</th><th>Quantity</th><th>Notional</th><th>Feed</th></tr></thead><tbody>{visibleTrades.map((trade) => <tr key={trade.key}><td className="mono">{new Date(trade.receivedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td><td><strong className="ticker">{trade.symbol}</strong></td><td className="mono">{money(trade.price)}</td><td className="mono">{Number(trade.quantity).toLocaleString()}</td><td className="mono">{money(Number(trade.price) * Number(trade.quantity))}</td><td><span className="execution-tag"><i /> MATCHED</span></td></tr>)}</tbody></table></div>}
         </section>
         <footer><span>ORDERFLOW <b>·</b> MATCHING ENGINE</span><span>Market data is for demonstration purposes</span></footer>

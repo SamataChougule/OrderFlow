@@ -26,3 +26,4 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 .price-stepper{display:flex;align-items:center;justify-content:space-between;margin-top:6px;color:#627087;font-size:8px}.price-stepper button{height:21px;min-width:25px;border:1px solid #2d3747;border-radius:4px;background:#121923;color:#a9b9d3;font-family:DM Mono,monospace}.price-stepper button:hover{border-color:#4a6592;background:#1b2940;color:#d7e3f8}
 .crossed-spread{color:#f08a92!important}
+.trade-sort{max-width:112px;padding:5px 7px;border:1px solid #2a3445;border-radius:6px;background:#121923;color:#aebbd0;font-size:8px}.trade-sort:focus-visible{outline:2px solid #77a5ff;outline-offset:2px}
