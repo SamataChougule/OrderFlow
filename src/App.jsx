@@ -302,7 +302,8 @@ function App() {
           </section>
 
           <section className="panel book-panel">
-            <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
+            <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className={`live-pill ${apiConnected ? "" : lastUpdated ? "stale" : "offline"}`}><i /> {apiConnected ? "LIVE" : lastUpdated ? "STALE" : "OFFLINE"}</span></div>
+            {!apiConnected && orderRows.length > 0 && <div className="stale-note" role="status">Showing the last saved order book snapshot{lastUpdated ? ` from ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}.</div>}
             {bookLoading && orderRows.length === 0 ? <EmptyState title={`Loading ${symbol} book`} detail="Getting the latest bid and ask orders…" /> : orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Backend unavailable"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : apiError || "The order book will appear when the backend is available."} action={!apiConnected ? loadOrderBook : undefined} actionLabel="Try again" /> : <div className="book-sides">
               <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
               <div className="spread-line"><span>SPREAD</span><strong className={spread !== null && spread < 0 ? "crossed-spread" : ""}>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
