@@ -25,3 +25,4 @@
 .empty-action{margin-top:9px;padding:6px 10px;border:1px solid #33425c;border-radius:5px;background:#172033;color:#a9c2f4;font-size:9px;font-weight:600}.empty-action:hover{background:#202f4a;border-color:#4d6794}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 .price-stepper{display:flex;align-items:center;justify-content:space-between;margin-top:6px;color:#627087;font-size:8px}.price-stepper button{height:21px;min-width:25px;border:1px solid #2d3747;border-radius:4px;background:#121923;color:#a9b9d3;font-family:DM Mono,monospace}.price-stepper button:hover{border-color:#4a6592;background:#1b2940;color:#d7e3f8}
+.crossed-spread{color:#f08a92!important}

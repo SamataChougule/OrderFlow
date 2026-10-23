@@ -277,7 +277,7 @@ function App() {
         <section className="metric-grid" aria-label="Market summary">
           <Metric label="BEST BID" value={bestBid ? money(bestBid.price) : "—"} detail={bestBid ? `${bestBid.quantity} shares` : "No buy orders"} tone="green" />
           <Metric label="BEST ASK" value={bestAsk ? money(bestAsk.price) : "—"} detail={bestAsk ? `${bestAsk.quantity} shares` : "No sell orders"} tone="red" />
-          <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : "Bid / ask difference"} />
+          <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : spread < 0 ? "Crossed market · check quotes" : "Bid / ask difference"} tone={spread !== null && spread < 0 ? "red" : ""} />
           <Metric label="ACTIVE ORDERS" value={activeCount.toLocaleString()} detail={`${sortedBuyOrders.length} bids · ${sortedSellOrders.length} asks`} />
         </section>
 
@@ -300,7 +300,7 @@ function App() {
             <div className="panel-heading"><div><div className="eyebrow">LIQUIDITY</div><h2>Order book <span className="heading-symbol">{symbol}</span></h2></div><span className="live-pill"><i /> LIVE</span></div>
             {bookLoading && orderRows.length === 0 ? <EmptyState title={`Loading ${symbol} book`} detail="Getting the latest bid and ask orders…" /> : orderRows.length === 0 ? <EmptyState title={apiConnected ? "Book is clear" : "Backend unavailable"} detail={apiConnected ? `No active orders for ${symbol}. Place an order to get started.` : apiError || "The order book will appear when the backend is available."} action={!apiConnected ? loadOrderBook : undefined} actionLabel="Try again" /> : <div className="book-sides">
               <BookSide title="ASKS · SELL" orders={sortedSellOrders.slice(0, 7)} side="SELL" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
-              <div className="spread-line"><span>SPREAD</span><strong>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
+              <div className="spread-line"><span>SPREAD</span><strong className={spread !== null && spread < 0 ? "crossed-spread" : ""}>{spread === null ? "—" : money(spread)}</strong><span>{spread === null ? "" : "USD"}</span></div>
               <BookSide title="BIDS · BUY" orders={sortedBuyOrders.slice(0, 7)} side="BUY" onCancel={cancelOrder} onSelectPrice={selectBookPrice} cancelling={cancelling} />
             </div>}
           </section>
