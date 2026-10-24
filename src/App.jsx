@@ -129,8 +129,8 @@ function App() {
       socket.onmessage = ({ data }) => {
         try {
           const trade = JSON.parse(data);
-          if (trade.symbol && Number.isFinite(Number(trade.price))) {
-            const incoming = { ...trade, receivedAt: Date.now(), key: `${Date.now()}-${Math.random()}` };
+          if (typeof trade.symbol === "string" && isValidSymbol(trade.symbol) && Number.isFinite(Number(trade.price)) && Number(trade.price) > 0 && Number.isFinite(Number(trade.quantity)) && Number(trade.quantity) > 0) {
+            const incoming = { ...trade, symbol: trade.symbol.trim().toUpperCase(), price: Number(trade.price), quantity: Number(trade.quantity), receivedAt: Date.now(), key: `${Date.now()}-${Math.random()}` };
             if (tapePausedRef.current) {
               queuedTrades.current = [incoming, ...queuedTrades.current].slice(0, 30);
               setQueuedTradeCount(queuedTrades.current.length);
