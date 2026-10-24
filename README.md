@@ -11,6 +11,7 @@ OrderFlow is a dark, responsive trading workspace for exploring a live order boo
 - Live execution tape with all-symbol and selected-symbol filters
 - API and WebSocket connection indicators, automatic stream reconnection, and refresh timestamps
 - Responsive layout and keyboard-visible focus states
+- Press `R` to refresh the order book when focus is outside a text field
 
 ## Run locally
 

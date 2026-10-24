@@ -107,11 +107,11 @@ function App() {
     }
   }, [symbol]);
 
-  const refreshOrderBook = async () => {
+  const refreshOrderBook = useCallback(async () => {
     setRefreshing(true);
     await loadOrderBook();
     setRefreshing(false);
-  };
+  }, [loadOrderBook]);
 
   useEffect(() => {
     const handleRefreshShortcut = (event) => {
@@ -122,7 +122,7 @@ function App() {
     };
     window.addEventListener("keydown", handleRefreshShortcut);
     return () => window.removeEventListener("keydown", handleRefreshShortcut);
-  }, []);
+  }, [refreshOrderBook]);
 
   useEffect(() => {
     setBook({ buyOrders: [], sellOrders: [] });
@@ -176,7 +176,7 @@ function App() {
     };
     connect();
     return () => { disposed = true; window.clearTimeout(retryTimer); socket?.close(); };
-  }, []);
+  }, [refreshOrderBook]);
 
   const sortedBuyOrders = useMemo(
     () => [...book.buyOrders].sort((left, right) => Number(right.price) - Number(left.price)),
