@@ -74,8 +74,11 @@ function App() {
       const response = await fetch(`/api/orderbook?symbol=${encodeURIComponent(symbol)}`);
       if (!response.ok) throw new Error(`Order book request failed (${response.status})`);
       const data = await response.json();
+      if (!data || !Array.isArray(data.buyOrders) || !Array.isArray(data.sellOrders)) {
+        throw new Error("Order book response had an invalid format.");
+      }
       if (currentRequest !== requestId.current) return;
-      setBook({ buyOrders: data.buyOrders || [], sellOrders: data.sellOrders || [] });
+      setBook({ buyOrders: data.buyOrders, sellOrders: data.sellOrders });
       setApiConnected(true);
       setApiError("");
       setLastUpdated(new Date());
