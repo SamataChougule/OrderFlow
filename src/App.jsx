@@ -114,11 +114,15 @@ function App() {
     let socket;
     let retryTimer;
     let disposed = false;
+    let retryDelay = 1000;
     const connect = () => {
       if (disposed) return;
       const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(`${scheme}//${window.location.host}/ws/market-data`);
-      socket.onopen = () => setStreamConnected(true);
+      socket.onopen = () => {
+        retryDelay = 1000;
+        setStreamConnected(true);
+      };
       socket.onmessage = ({ data }) => {
         try {
           const trade = JSON.parse(data);
@@ -134,7 +138,10 @@ function App() {
       };
       socket.onclose = () => {
         setStreamConnected(false);
-        if (!disposed) retryTimer = window.setTimeout(connect, 2200);
+        if (!disposed) {
+          retryTimer = window.setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 2, 30000);
+        }
       };
       socket.onerror = () => socket.close();
     };
