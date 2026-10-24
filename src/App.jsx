@@ -10,6 +10,16 @@ const savedSymbol = () => {
   catch { return "AAPL"; }
 };
 
+const savedTapeSettings = () => {
+  try {
+    const settings = JSON.parse(window.localStorage.getItem("orderflow.tape") || "{}");
+    return {
+      showAllTrades: typeof settings.showAllTrades === "boolean" ? settings.showAllTrades : true,
+      tradeSort: ["newest", "price", "quantity"].includes(settings.tradeSort) ? settings.tradeSort : "newest",
+    };
+  } catch { return { showAllTrades: true, tradeSort: "newest" }; }
+};
+
 function App() {
   const [symbol, setSymbol] = useState(savedSymbol);
   const [order, setOrder] = useState(() => ({ ...initialOrder, symbol: savedSymbol() }));
@@ -66,6 +76,11 @@ function App() {
     try { window.localStorage.setItem("orderflow.market", symbol); }
     catch { /* Market selection remains available if storage is disabled. */ }
   }, [symbol]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem("orderflow.tape", JSON.stringify({ showAllTrades, tradeSort })); }
+    catch { /* Tape settings remain usable if storage is disabled. */ }
+  }, [showAllTrades, tradeSort]);
 
   const loadOrderBook = useCallback(async () => {
     const currentRequest = ++requestId.current;
