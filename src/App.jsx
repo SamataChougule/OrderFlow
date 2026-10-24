@@ -114,6 +114,17 @@ function App() {
   };
 
   useEffect(() => {
+    const handleRefreshShortcut = (event) => {
+      const tagName = event.target?.tagName;
+      if (event.key.toLowerCase() !== "r" || event.repeat || event.altKey || event.ctrlKey || event.metaKey || ["INPUT", "TEXTAREA", "SELECT"].includes(tagName) || event.target?.isContentEditable) return;
+      event.preventDefault();
+      refreshOrderBook();
+    };
+    window.addEventListener("keydown", handleRefreshShortcut);
+    return () => window.removeEventListener("keydown", handleRefreshShortcut);
+  }, []);
+
+  useEffect(() => {
     setBook({ buyOrders: [], sellOrders: [] });
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") loadOrderBook();
@@ -310,7 +321,7 @@ function App() {
       </header>
 
       <main id="top" className="workspace">
-        <div className="page-heading"><div><div className="eyebrow">TRADING WORKSPACE <span> / </span> {symbol || "MARKET"}</div><h1>Market overview</h1><p>Live order flow, market depth, and execution activity.</p></div><div className="refresh-group"><span className="last-updated" aria-live="polite">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "Waiting for market data"}</span><button className={`refresh-button ${refreshing ? "refreshing" : ""}`} onClick={refreshOrderBook} disabled={refreshing} aria-label="Refresh order book"><span>↻</span>{refreshing ? "Refreshing" : "Refresh"}</button></div></div>
+        <div className="page-heading"><div><div className="eyebrow">TRADING WORKSPACE <span> / </span> {symbol || "MARKET"}</div><h1>Market overview</h1><p>Live order flow, market depth, and execution activity.</p></div><div className="refresh-group"><span className="last-updated" aria-live="polite">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "Waiting for market data"}</span><button className={`refresh-button ${refreshing ? "refreshing" : ""}`} onClick={refreshOrderBook} disabled={refreshing} aria-label="Refresh order book (R)" title="Refresh order book (R)"><span>↻</span>{refreshing ? "Refreshing" : "Refresh"}</button></div></div>
 
         <nav className="watchlist" aria-label="Quick market selection">{watchlist.map((item) => <button key={item} type="button" className={symbol === item ? "active" : ""} aria-pressed={symbol === item} onClick={() => selectSymbol(item)}>{item}</button>)}</nav>
 
