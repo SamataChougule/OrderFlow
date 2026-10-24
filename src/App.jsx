@@ -97,9 +97,17 @@ function App() {
 
   useEffect(() => {
     setBook({ buyOrders: [], sellOrders: [] });
-    const initialLoad = window.setTimeout(loadOrderBook, 0);
-    const interval = window.setInterval(loadOrderBook, 2500);
-    return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") loadOrderBook();
+    };
+    const initialLoad = window.setTimeout(refreshWhenVisible, 0);
+    const interval = window.setInterval(refreshWhenVisible, 2500);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [loadOrderBook]);
 
   useEffect(() => {
