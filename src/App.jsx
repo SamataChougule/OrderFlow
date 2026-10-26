@@ -195,6 +195,8 @@ function App() {
   const bestBid = sortedBuyOrders[0];
   const bestAsk = sortedSellOrders[0];
   const spread = bestBid && bestAsk ? Number(bestAsk.price) - Number(bestBid.price) : null;
+  const midpoint = bestBid && bestAsk ? (Number(bestBid.price) + Number(bestAsk.price)) / 2 : null;
+  const spreadBps = spread !== null && midpoint > 0 ? (spread / midpoint) * 10000 : null;
   const activeCount = book.buyOrders.length + book.sellOrders.length;
   const topBidDepth = sortedBuyOrders.slice(0, 5).reduce((total, item) => total + (Number(item.quantity) || 0), 0);
   const topAskDepth = sortedSellOrders.slice(0, 5).reduce((total, item) => total + (Number(item.quantity) || 0), 0);
@@ -337,7 +339,7 @@ function App() {
         <section className="metric-grid" aria-label="Market summary">
           <Metric label="BEST BID" value={bestBid ? money(bestBid.price) : "—"} detail={bestBid ? `${bestBid.quantity} shares` : "No buy orders"} tone="green" />
           <Metric label="BEST ASK" value={bestAsk ? money(bestAsk.price) : "—"} detail={bestAsk ? `${bestAsk.quantity} shares` : "No sell orders"} tone="red" />
-          <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : spread < 0 ? "Crossed market · check quotes" : "Bid / ask difference"} tone={spread !== null && spread < 0 ? "red" : ""} />
+          <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : spread < 0 ? "Crossed market · check quotes" : `${(spreadBps / 100).toFixed(2)}% of midpoint · ${spreadBps.toFixed(1)} bps`} tone={spread !== null && spread < 0 ? "red" : ""} />
           <Metric label="ACTIVE ORDERS" value={activeCount.toLocaleString()} detail={`${sortedBuyOrders.length} bids · ${sortedSellOrders.length} asks`} />
           <Metric label="DEPTH IMBALANCE" value={depthImbalance === null ? "—" : `${depthImbalance > 0 ? "+" : ""}${depthImbalance.toFixed(1)}%`} detail={depthImbalance === null ? "No visible depth" : "Top five bid and ask levels"} tone={depthImbalance === null ? "" : depthImbalance >= 0 ? "green" : "red"} />
         </section>
