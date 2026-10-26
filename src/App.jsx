@@ -176,7 +176,7 @@ function App() {
     };
     connect();
     return () => { disposed = true; window.clearTimeout(retryTimer); socket?.close(); };
-  }, [refreshOrderBook]);
+  }, []);
 
   const sortedBuyOrders = useMemo(
     () => [...book.buyOrders].sort((left, right) => Number(right.price) - Number(left.price)),
