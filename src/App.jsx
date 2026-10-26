@@ -196,6 +196,9 @@ function App() {
   const bestAsk = sortedSellOrders[0];
   const spread = bestBid && bestAsk ? Number(bestAsk.price) - Number(bestBid.price) : null;
   const activeCount = book.buyOrders.length + book.sellOrders.length;
+  const topBidDepth = sortedBuyOrders.slice(0, 5).reduce((total, item) => total + (Number(item.quantity) || 0), 0);
+  const topAskDepth = sortedSellOrders.slice(0, 5).reduce((total, item) => total + (Number(item.quantity) || 0), 0);
+  const depthImbalance = topBidDepth + topAskDepth > 0 ? ((topBidDepth - topAskDepth) / (topBidDepth + topAskDepth)) * 100 : null;
   const orderRows = useMemo(() => [
     ...sortedSellOrders.map((item) => ({ ...item, side: "SELL" })),
     ...sortedBuyOrders.map((item) => ({ ...item, side: "BUY" })),
@@ -336,6 +339,7 @@ function App() {
           <Metric label="BEST ASK" value={bestAsk ? money(bestAsk.price) : "—"} detail={bestAsk ? `${bestAsk.quantity} shares` : "No sell orders"} tone="red" />
           <Metric label="SPREAD" value={spread === null ? "—" : money(spread)} detail={spread === null ? "Awaiting both sides" : spread < 0 ? "Crossed market · check quotes" : "Bid / ask difference"} tone={spread !== null && spread < 0 ? "red" : ""} />
           <Metric label="ACTIVE ORDERS" value={activeCount.toLocaleString()} detail={`${sortedBuyOrders.length} bids · ${sortedSellOrders.length} asks`} />
+          <Metric label="DEPTH IMBALANCE" value={depthImbalance === null ? "—" : `${depthImbalance > 0 ? "+" : ""}${depthImbalance.toFixed(1)}%`} detail={depthImbalance === null ? "No visible depth" : "Top five bid and ask levels"} tone={depthImbalance === null ? "" : depthImbalance >= 0 ? "green" : "red"} />
         </section>
 
         <div className="main-grid">
