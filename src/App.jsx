@@ -261,7 +261,7 @@ function App() {
       ...visibleTrades.map((trade) => [new Date(trade.receivedAt).toISOString(), trade.symbol, trade.price, trade.quantity, Number(trade.price) * Number(trade.quantity)]),
     ];
     const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
     const marketLabel = showAllTrades ? "all-symbols" : symbol.toLowerCase();
