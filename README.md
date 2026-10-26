@@ -4,14 +4,21 @@ OrderFlow is a dark, responsive trading workspace for exploring a live order boo
 
 ## Highlights
 
-- Best bid, best ask, spread, and active-order summaries
+- Best bid, best ask, active-order count, depth imbalance, and spread in dollars and basis points
 - Price-sorted order book with order cancellation controls
 - Buy and sell limit or market order form with input validation and an estimated order value
 - Quick market watchlist, with the selected symbol remembered in the browser
-- Live execution tape with all-symbol and selected-symbol filters
-- API and WebSocket connection indicators, automatic stream reconnection, and refresh timestamps
+- Live execution tape with symbol filtering, sorting, pause and resume, recent-volume summaries, and CSV export
+- API and WebSocket connection indicators, progressive stream reconnects, and refresh timestamps
 - Responsive layout and keyboard-visible focus states
 - Press `R` to refresh the order book when focus is outside a text field
+
+## Demo walkthrough
+
+1. Start the backend and frontend, then confirm that the API and market stream show as connected.
+2. Switch symbols with the watchlist and compare the best bid, ask, spread, and depth imbalance.
+3. Click a price in the book to prefill a limit order, adjust the price or quantity, and review the estimated order value before submitting.
+4. Pause the execution tape, resume it to apply queued events, sort or filter the tape, and export the visible rows as CSV.
 
 ## Run locally
 
