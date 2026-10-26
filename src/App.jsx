@@ -27,8 +27,9 @@ function App() {
   const [trades, setTrades] = useState([]);
   const [tapePaused, setTapePaused] = useState(false);
   const [queuedTradeCount, setQueuedTradeCount] = useState(0);
-  const [showAllTrades, setShowAllTrades] = useState(true);
-  const [tradeSort, setTradeSort] = useState("newest");
+  const [tapeSettings] = useState(savedTapeSettings);
+  const [showAllTrades, setShowAllTrades] = useState(tapeSettings.showAllTrades);
+  const [tradeSort, setTradeSort] = useState(tapeSettings.tradeSort);
   const [apiConnected, setApiConnected] = useState(false);
   const [apiError, setApiError] = useState("");
   const [bookLoading, setBookLoading] = useState(true);
@@ -76,6 +77,11 @@ function App() {
     try { window.localStorage.setItem("orderflow.market", symbol); }
     catch { /* Market selection remains available if storage is disabled. */ }
   }, [symbol]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem("orderflow.tape", JSON.stringify({ showAllTrades, tradeSort })); }
+    catch { /* Tape settings remain usable if storage is disabled. */ }
+  }, [showAllTrades, tradeSort]);
 
   useEffect(() => {
     try { window.localStorage.setItem("orderflow.tape", JSON.stringify({ showAllTrades, tradeSort })); }
